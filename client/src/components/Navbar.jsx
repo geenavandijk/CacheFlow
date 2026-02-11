@@ -22,7 +22,7 @@ export default function Navbar() {
       padding: "1rem 2rem", 
       display: "flex", 
       justifyContent: "space-between",
-      alignItems: "center"
+      alignItems: "center",
     }}>
       <Logo size="small" />
       
@@ -31,6 +31,7 @@ export default function Navbar() {
         <Link to="/search">Search</Link>
         <Link to="/stock">Stock</Link>
         <Link to="/portfolio">Portfolio</Link>
+        </div>
         <button 
           onClick={handleLogout} 
           className="secondary"
@@ -38,7 +39,7 @@ export default function Navbar() {
         >
           Logout
         </button>
-      </div>
+      
     </nav>
   );
 }
