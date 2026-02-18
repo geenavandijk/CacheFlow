@@ -2,115 +2,265 @@ package routes
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/json"
+	"fmt"
 	"net/http"
-	"net/mail"
+	"os"
 	"strings"
 	"time"
 
+	accountEntities "code.cacheflow.internal/account/entities"
+	accountEmail "code.cacheflow.internal/account/handler"
 	datastores "code.cacheflow.internal/datastores/mongo"
-	"code.cacheflow.internal/util/httpx"
+	"code.cacheflow.internal/util"
+	"code.cacheflow.internal/util/password"
+	"code.cacheflow.internal/util/ptr"
 
+	"github.com/charmbracelet/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"golang.org/x/crypto/bcrypt"
 )
 
-type CreateAccountRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+type CreateAccountBody struct {
+	FirstName *string `json:"first_name"`
+	LastName  *string `json:"last_name"`
+	Email     *string `json:"email"`
+	Password  *string `json:"password"`
 }
 
-func CreateAccount(w http.ResponseWriter, r *http.Request) {
-	var req CreateAccountRequest
+func getLogger(prefix string) *log.Logger {
+	return log.NewWithOptions(os.Stderr, log.Options{
+		ReportCaller:    true,
+		ReportTimestamp: true,
+		TimeFormat:      "2006-01-02 15:04:05",
+		Prefix:          prefix,
+	})
+}
 
-	// Decode JSON
-	if err := httpx.DecodeJSON(r, &req); err != nil {
-		httpx.WriteError(w, r, err)
+func CreateAccount(res http.ResponseWriter, req *http.Request) {
+	logger := getLogger("ACCOUNT (CA)")
+
+	var body CreateAccountBody
+	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+		logger.Error("failed to decode request body", "err", err)
+		util.JSONResponse(res, http.StatusBadRequest, map[string]any{
+			"error": "invalid request body",
+		})
 		return
 	}
 
-	// Normalize
-	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
-	req.Password = strings.TrimSpace(req.Password)
-
-	// Validate
-	fields := map[string]string{}
-
-	if req.Email == "" {
-		fields["email"] = "required"
-	} else if _, err := mail.ParseAddress(req.Email); err != nil {
-		fields["email"] = "invalid"
+	// Basic validation
+	if body.Email == nil || strings.TrimSpace(*body.Email) == "" {
+		util.JSONResponse(res, http.StatusBadRequest, map[string]any{
+			"error": "email is required",
+		})
+		return
 	}
-
-	if req.Password == "" {
-		fields["password"] = "required"
-	} else if len(req.Password) < 8 {
-		fields["password"] = "must be at least 8 characters"
-	}
-
-	if len(fields) > 0 {
-		httpx.WriteError(w, r, httpx.BadRequest("Validation failed", fields))
+	if body.Password == nil || strings.TrimSpace(*body.Password) == "" {
+		util.JSONResponse(res, http.StatusBadRequest, map[string]any{
+			"error": "password is required",
+		})
 		return
 	}
 
-	// --- DB create user ---
-	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-	defer cancel()
+	email := strings.ToLower(strings.TrimSpace(*body.Email))
+	ctx := req.Context()
 
-	users := datastores.DB.Collection("users")
+	db := datastores.GetMongoDatabase(ctx)
+	accountsCollection := db.Collection(datastores.Accounts)
 
-	// Pre-check to give clean 409 even if you don't have a unique index yet
-	var existing bson.M
-	err := users.FindOne(ctx, bson.M{"email": req.Email}).Decode(&existing)
-	if err == nil {
-		httpx.WriteError(w, r, httpx.Conflict("Email already in use", map[string]string{
-			"email": "already_exists",
-		}))
+	// Ensure account doesn't already exist
+	var existing accountEntities.AccountEntity
+	err := accountsCollection.FindOne(ctx, bson.D{{Key: "email", Value: email}}).Decode(&existing)
+	switch err {
+	case nil:
+		util.JSONResponse(res, http.StatusConflict, map[string]any{
+			"error": "account already exists",
+		})
+		return
+	case mongo.ErrNoDocuments:
+		// ok, proceed to create
+	default:
+		logger.Error("failed to check existing account", "err", err)
+		util.JSONResponse(res, http.StatusInternalServerError, map[string]any{
+			"error": "internal server error",
+		})
 		return
 	}
-	if err != nil && err != mongo.ErrNoDocuments {
-		httpx.WriteError(w, r, httpx.Internal("Internal server error").WithErr(err))
-		return
-	}
 
-	// Hash password
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	// Hash password (includes validation)
+	hashedPassword, version, err := password.HashPassword(body.Password)
 	if err != nil {
-		httpx.WriteError(w, r, httpx.Internal("Internal server error").WithErr(err))
+		logger.Error("failed to hash password", "err", err)
+		util.JSONResponse(res, http.StatusBadRequest, map[string]any{
+			"error": err.Error(),
+		})
 		return
 	}
 
-	now := time.Now().UTC()
-	doc := bson.M{
-		"email":        req.Email,
-		"passwordHash": string(hash),
-		"createdAt":    now,
-		"updatedAt":    now,
-		"status":       "active",
+	now := time.Now()
+	accountID := primitive.NewObjectID()
+
+	account := &accountEntities.AccountEntity{
+		ID:         accountID,
+		AccountID:  ptr.String(accountID.Hex()),
+		IsVerified: ptr.Bool(false),
+		IsComplete: ptr.Bool(false),
+		Password: &accountEntities.Password{
+			Hash:             hashedPassword,
+			EncryptedVersion: version,
+		},
+		AnnouncementVersion: ptr.Int64(0),
+		TwoFAEnabled:        ptr.Bool(false),
+		Sessions:            []*accountEntities.Session{},
+		FirstName:           body.FirstName,
+		LastName:            body.LastName,
+		Email:               &email,
+		CreatedAt:           ptr.Time(now),
+		UpdatedAt:           ptr.Time(now),
 	}
 
-	res, err := users.InsertOne(ctx, doc)
-	if err != nil {
-		// If you have a unique index on email, this catches races too
-		if mongo.IsDuplicateKeyError(err) {
-			httpx.WriteError(w, r, httpx.Conflict("Email already in use", map[string]string{
-				"email": "already_exists",
-			}))
+	if _, err := accountsCollection.InsertOne(ctx, account); err != nil {
+		logger.Error("failed to insert account", "err", err)
+		util.JSONResponse(res, http.StatusInternalServerError, map[string]any{
+			"error": "failed to create account",
+		})
+		return
+	}
+
+	// Create verification record and send email asynchronously
+	go func(ctx context.Context, email string, firstName *string) {
+		vLogger := getLogger("ACCOUNT (CV)")
+		verificationSecret, err := generateVerificationSecret()
+		if err != nil {
+			vLogger.Error("failed to generate verification secret", "err", err)
 			return
 		}
-		httpx.WriteError(w, r, httpx.Internal("Internal server error").WithErr(err))
+
+		db := datastores.GetMongoDatabase(ctx)
+		verificationCollection := db.Collection(datastores.AccountCreationVerification)
+
+		now := time.Now()
+		verification := &accountEntities.VerificationEntity{
+			ID:         primitive.NewObjectID(),
+			UUID:       ptr.String(verificationSecret),
+			IsVerified: ptr.Bool(false),
+			Resends:    ptr.Int32(0),
+			IsComplete: ptr.Bool(false),
+			DeviceID:   nil,
+			Code:       ptr.Int64(0),
+			Info:       ptr.String(email), // store email for lookup
+			CreatedAt:  ptr.Time(now),
+			Attempts:   ptr.Int32(0),
+		}
+
+		if _, err := verificationCollection.InsertOne(ctx, verification); err != nil {
+			vLogger.Error("failed to insert verification record", "err", err)
+			return
+		}
+
+		verificationLink := fmt.Sprintf("http://localhost:5173/verify?secret=%s", verificationSecret)
+
+		emailData := map[string]string{
+			"verification_link": verificationLink,
+			"email":             email,
+		}
+		if firstName != nil {
+			emailData["first_name"] = *firstName
+		}
+
+		if err := accountEmail.SendEmail(accountEmail.EmailRequestBody{
+			Email:    email,
+			Subject:  "",
+			Template: "verify-create-account",
+			Data:     emailData,
+		}); err != nil {
+			vLogger.Error("failed to send verification email", "err", err)
+		}
+	}(context.Background(), email, body.FirstName)
+
+	util.JSONResponse(res, http.StatusCreated, map[string]any{
+		"success": true,
+		"email":   email,
+	})
+}
+
+func VerifyAccount(res http.ResponseWriter, req *http.Request) {
+	logger := getLogger("ACCOUNT (VA)")
+	ctx := req.Context()
+
+	secret := req.URL.Query().Get("secret")
+	if strings.TrimSpace(secret) == "" {
+		util.JSONResponse(res, http.StatusBadRequest, map[string]any{
+			"error": "secret is required",
+		})
 		return
 	}
 
-	// Return created user id
-	idHex := ""
-	if oid, ok := res.InsertedID.(primitive.ObjectID); ok {
-		idHex = oid.Hex()
+	db := datastores.GetMongoDatabase(ctx)
+	verificationCollection := db.Collection(datastores.AccountCreationVerification)
+
+	var verification accountEntities.VerificationEntity
+	err := verificationCollection.FindOne(ctx, bson.D{{Key: "uuid", Value: secret}}).Decode(&verification)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			util.JSONResponse(res, http.StatusNotFound, map[string]any{
+				"error": "invalid or expired verification link",
+			})
+			return
+		}
+		logger.Error("failed to find verification record", "err", err)
+		util.JSONResponse(res, http.StatusInternalServerError, map[string]any{
+			"error": "internal server error",
+		})
+		return
 	}
 
-	httpx.OK(w, http.StatusCreated, map[string]any{
-		"id":    idHex,
-		"email": req.Email,
+	if verification.Info == nil || strings.TrimSpace(*verification.Info) == "" {
+		util.JSONResponse(res, http.StatusInternalServerError, map[string]any{
+			"error": "verification record is missing account info",
+		})
+		return
+	}
+
+	email := strings.ToLower(strings.TrimSpace(*verification.Info))
+	accountsCollection := db.Collection(datastores.Accounts)
+
+	// Mark account as verified and complete
+	update := bson.D{{
+		Key: "$set",
+		Value: bson.D{
+			{Key: "is_verified", Value: true},
+			{Key: "is_complete", Value: true},
+			{Key: "updated_at", Value: time.Now()},
+		},
+	}}
+
+	if _, err := accountsCollection.UpdateOne(ctx, bson.D{{Key: "email", Value: email}}, update); err != nil {
+		logger.Error("failed to update account verification status", "err", err)
+		util.JSONResponse(res, http.StatusInternalServerError, map[string]any{
+			"error": "failed to verify account",
+		})
+		return
+	}
+
+	// Delete verification record now that it's been used
+	if _, err := verificationCollection.DeleteOne(ctx, bson.D{{Key: "_id", Value: verification.ID}}); err != nil {
+		logger.Error("failed to delete verification record", "err", err)
+	}
+
+	util.JSONResponse(res, http.StatusOK, map[string]any{
+		"success": true,
+		"email":   email,
 	})
+}
+
+func generateVerificationSecret() (string, error) {
+	buf := make([]byte, 32)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", buf), nil
 }

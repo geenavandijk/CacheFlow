@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"os"
 
+	"code.cacheflow.internal/account/oauth"
+	accountRoutes "code.cacheflow.internal/account/routes"
 	datastores "code.cacheflow.internal/datastores/mongo"
 	"code.cacheflow.internal/util"
 	"code.cacheflow.internal/util/httpx"
@@ -45,7 +47,7 @@ func main() {
 		AllowedHeaders: []string{
 			"Accept", "Authorization", "Content-Type", "X-CSRF-Token",
 			"x-cf-device-id", "x-cf-uid", "x-cf-bearer", "x-cf-refresh",
-			"X-Request-Id",
+			"X-Request-Id", "x-cf-auth-scope",
 		},
 		ExposedHeaders:   []string{"X-Request-Id"},
 		AllowCredentials: true,
@@ -62,12 +64,19 @@ func main() {
 		}))
 	})
 
+	// Account routes
+	accountRoutes.RegisterAccountRoutes(r)
+
 	// Health route (standard response)
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		httpx.OK(w, http.StatusOK, map[string]any{
 			"message": "CacheFlow Internal Server is running",
 			"version": "1.0.0",
 		})
+	})
+
+	r.Post("/oauth2/token", func(w http.ResponseWriter, r *http.Request) {
+		oauth.OAuthToken(r, w, r.Context())
 	})
 
 	logger.Info("Server started at http://localhost:8080")
