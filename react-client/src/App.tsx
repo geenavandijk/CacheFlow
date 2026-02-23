@@ -26,6 +26,7 @@ function App() {
           <Route path="/login" element={<MainSiteViewController />} />
           <Route path="/signup" element={<MainSiteViewController />} />
           <Route path="/verify" element={<MainSiteViewController />} />
+          <Route path="/client-app/profile" element={<AppViewController />} />
           <Route path="/client-app/dashboard" element={<AppViewController />} />
         </Routes>
       </AuthProvider>
