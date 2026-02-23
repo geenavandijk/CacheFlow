@@ -101,10 +101,10 @@ Leave this terminal running.
 
 Open a NEW terminal window.
 
-### 1. Navigate to client folder
+### 1. Navigate to react-client folder
 
 ```
-cd client
+cd react-client
 ```
 
 ### 2. Install dependencies
@@ -147,7 +147,7 @@ go run main.go
 
 ## Frontend
 ```
-cd client
+cd react-client
 npm run dev
 ```
 
