@@ -5,7 +5,7 @@ const Home = () => {
     <div className="flex flex-col items-center justify-center h-full">
 
         <h1 className="text-white text-4xl font-bold">
-            Home Content
+            Invest. Grow. Retire.
         </h1>
 
     </div>
