@@ -109,9 +109,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  useEffect(() => {
+useEffect(() => {
+  if (import.meta.env.VITE_NODE_ENV === "development") {
+    setIsAuthenticated(true);
+    console.log("working in dev mode")
+  } else {
     checkAuthentication();
-  }, []);
+  }
+}, []);
 
   if (isAuthenticated === null && window.location.pathname.includes('/client-app')) {
     return <LoadingScreen />;
