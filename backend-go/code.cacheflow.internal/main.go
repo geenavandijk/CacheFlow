@@ -6,6 +6,7 @@ import (
 
 	"code.cacheflow.internal/account/oauth"
 	accountRoutes "code.cacheflow.internal/account/routes"
+	"code.cacheflow.internal/datafeed"
 	datastores "code.cacheflow.internal/datastores/mongo"
 	"code.cacheflow.internal/test"
 	"code.cacheflow.internal/util"
@@ -78,6 +79,11 @@ func main() {
 
 	r.Post("/oauth2/token", func(w http.ResponseWriter, r *http.Request) {
 		oauth.OAuthToken(r, w, r.Context())
+	})
+
+	// Get company data (JUST FOR TESTING AND HELP PURPOSES)
+	r.Get("/test/company", func(w http.ResponseWriter, r *http.Request) {
+		datafeed.GetCompanyData(w, r)
 	})
 
 	test.GetCompanySnapshot("GOOGL")
