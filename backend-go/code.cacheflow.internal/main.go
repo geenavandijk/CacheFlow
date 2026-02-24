@@ -7,6 +7,7 @@ import (
 	"code.cacheflow.internal/account/oauth"
 	accountRoutes "code.cacheflow.internal/account/routes"
 	datastores "code.cacheflow.internal/datastores/mongo"
+	"code.cacheflow.internal/test"
 	"code.cacheflow.internal/util"
 	"code.cacheflow.internal/util/httpx"
 	"code.cacheflow.internal/util/secrets"
@@ -78,6 +79,8 @@ func main() {
 	r.Post("/oauth2/token", func(w http.ResponseWriter, r *http.Request) {
 		oauth.OAuthToken(r, w, r.Context())
 	})
+
+	test.GetCompanySnapshot("GOOGL")
 
 	logger.Info("Server started at http://localhost:8080")
 	if err := http.ListenAndServe(":8080", r); err != nil {
