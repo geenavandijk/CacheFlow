@@ -31,10 +31,18 @@ func LoadInAccountData(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	util.JSONResponse(res, http.StatusOK, map[string]any{
-		"email": account.Email,
-		"first_name": account.FirstName,
-		"last_name": account.LastName,
-		"account_id": account.AccountID,
-	})
+	payload := map[string]any{
+		"email":       account.Email,
+		"first_name":  account.FirstName,
+		"last_name":   account.LastName,
+		"account_id":  account.AccountID,
+	}
+	if account.RiskSettings != nil {
+		payload["risk_settings"] = map[string]any{
+			"budget":              account.RiskSettings.Budget,
+			"max_loss_percentage": account.RiskSettings.MaxLossPercentage,
+			"risk_tolerance":      account.RiskSettings.RiskTolerance,
+		}
+	}
+	util.JSONResponse(res, http.StatusOK, payload)
 }

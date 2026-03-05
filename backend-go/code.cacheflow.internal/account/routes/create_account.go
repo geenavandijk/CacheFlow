@@ -120,6 +120,11 @@ func CreateAccount(res http.ResponseWriter, req *http.Request) {
 		Email:               &email,
 		CreatedAt:           ptr.Time(now),
 		UpdatedAt:           ptr.Time(now),
+		RiskSettings: &accountEntities.RiskSettings{
+			Budget: ptr.Int64(1000000),
+			MaxLossPercentage: ptr.Int64(50),
+			RiskTolerance: ptr.Int64(10),
+		},
 	}
 
 	if _, err := accountsCollection.InsertOne(ctx, account); err != nil {

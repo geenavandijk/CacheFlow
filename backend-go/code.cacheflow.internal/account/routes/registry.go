@@ -18,4 +18,6 @@ func RegisterAccountRoutes(r chi.Router) {
 		})
 	})
 	r.With(oauth.VerifyOAuthToken).Get("/v1/account/loadin", LoadInAccountData)
+	r.With(oauth.VerifyOAuthToken).Patch("/v1/account/settings", UpdateAccountSettings)
+	r.With(oauth.VerifyOAuthToken).Put("/v1/account/settings", UpdateAccountSettings)
 }

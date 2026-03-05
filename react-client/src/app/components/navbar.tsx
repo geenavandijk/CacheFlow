@@ -29,10 +29,16 @@ const AppNavbar = () => {
 
       <div className="flex items-center gap-4">
         <Link
-          to="/client-app"
+          to="/client-app/dashboard"
           className="text-xs text-neutral-300 hover:text-white transition-colors"
         >
           Dashboard
+        </Link>
+        <Link
+          to="/client-app/settings"
+          className="text-xs text-neutral-300 hover:text-white transition-colors"
+        >
+          Settings
         </Link>
 
         <div className="flex items-center gap-2 text-xs text-neutral-400">

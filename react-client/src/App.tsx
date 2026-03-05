@@ -28,6 +28,8 @@ function App() {
           <Route path="/verify" element={<MainSiteViewController />} />
           <Route path="/client-app/profile" element={<AppViewController />} />
           <Route path="/client-app/dashboard" element={<AppViewController />} />
+          <Route path="/client-app/settings" element={<AppViewController />} />
+          <Route path="/client-app/stock" element={<AppViewController />} />
         </Routes>
       </AuthProvider>
   

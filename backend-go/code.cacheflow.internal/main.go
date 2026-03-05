@@ -45,7 +45,7 @@ func main() {
 	// CORS (includes your frontend headers + request id)
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins: []string{"http://localhost:3000", "http://localhost:5173"},
-		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowedHeaders: []string{
 			"Accept", "Authorization", "Content-Type", "X-CSRF-Token",
 			"x-cf-device-id", "x-cf-uid", "x-cf-bearer", "x-cf-refresh",
@@ -85,6 +85,10 @@ func main() {
 	r.Get("/test/company", func(w http.ResponseWriter, r *http.Request) {
 		datafeed.GetCompanyData(w, r)
 	})
+
+	// Stock data from Massive API (ticker overview + aggregates)
+	r.Get("/v1/datafeed/stock", datafeed.GetTickerOverview)
+	r.Get("/v1/datafeed/stock/aggregates", datafeed.GetTickerAggregatesWithTimeframe)
 
 	test.GetCompanySnapshot("GOOGL")
 
