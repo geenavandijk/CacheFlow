@@ -76,6 +76,12 @@ func InitializeSecretCache() {
             logger.Fatal(err)
         }
     }
+    {
+        MassiveMainApiKeyValue, err = MassiveMainApiKey()
+        if err != nil {
+            logger.Fatal(err)
+        }
+    }
 }
 
 // MARK: Public Key
@@ -467,6 +473,41 @@ func DatabaseSecret() (string, error) {
 	// Build the request
 	req := &secretmanagerpb.AccessSecretVersionRequest{
 		Name: "projects/cacheflow-485623/secrets/mongo_uri/versions/latest",
+	}
+
+	// Access the secret
+	result, err := client.AccessSecretVersion(ctx, req)
+	if err != nil {
+		logger.Fatal(err)
+		return "", err
+	}
+
+	return string(result.Payload.Data), nil
+}
+
+// MARK: Massive Main API Key
+// Get the secret from Secret Manager
+func MassiveMainApiKey() (string, error) {
+
+	logger := log.NewWithOptions(os.Stderr, log.Options{
+		ReportCaller: true, // Report the file name and line number
+		ReportTimestamp: true, // Report the timestamp
+		TimeFormat: "2006-01-02 15:04:05", // Set the time format
+		Prefix: "SECRET", // Set the prefix
+	})
+
+	// Create a new client
+	ctx := context.Background()
+	client, err := secretmanager.NewClient(ctx)
+	if err != nil {
+		logger.Fatal(err)
+		return "", err
+	}
+	defer client.Close()
+
+	// Build the request
+	req := &secretmanagerpb.AccessSecretVersionRequest{
+		Name: "projects/cacheflow-485623/secrets/massive_main_key/versions/latest",
 	}
 
 	// Access the secret

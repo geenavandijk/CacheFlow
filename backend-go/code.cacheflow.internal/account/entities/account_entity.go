@@ -25,6 +25,20 @@ type AccountEntity struct {
 	Email        *string    `json:"email,omitempty" bson:"email,omitempty"`
 	CreatedAt    *time.Time `json:"created_at,omitempty" bson:"created_at,omitempty"`
 	UpdatedAt    *time.Time `json:"updated_at,omitempty" bson:"updated_at,omitempty"`
+
+	RiskSettings *RiskSettings `json:"risk_settings,omitempty" bson:"risk_settings,omitempty"`
+}
+
+type RiskSettings struct {
+
+	// this is the budget of the user (the amount of money the user is willing to spend)
+	Budget *int64 `json:"budget,omitempty" bson:"budget,omitempty"`
+
+	// this is the max loss percentage of the budget (the amount of money the user is willing to lose)
+	MaxLossPercentage *int64 `json:"max_loss_percentage,omitempty" bson:"max_loss_percentage,omitempty"`
+
+	// on the frontend this will be a slider from 1 to 10 (10 being high risk, 1 being lowest risk)
+	RiskTolerance *int64 `json:"risk_tolerance,omitempty" bson:"risk_tolerance,omitempty"`
 }
 
 type Password struct {
