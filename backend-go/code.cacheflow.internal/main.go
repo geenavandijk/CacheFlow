@@ -35,6 +35,7 @@ func main() {
 
 	r := chi.NewRouter()
 
+
 	// ✅ Centralized error handling base
 	r.Use(httpx.WithRequestID)
 	r.Use(httpx.Recover)
@@ -90,6 +91,9 @@ func main() {
 	r.Get("/v1/datafeed/stock", datafeed.GetTickerOverview)
 	r.Get("/v1/datafeed/stock/aggregates", datafeed.GetTickerAggregatesWithTimeframe)
 
+	// Company data from MongoDB database
+	r.Get("/v1/companies/search", datafeed.SearchCompanies)
+	
 	test.GetCompanySnapshot("GOOGL")
 
 	logger.Info("Server started at http://localhost:8080")

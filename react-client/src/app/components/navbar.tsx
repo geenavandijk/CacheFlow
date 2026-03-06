@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../provider/auth";
+import Search from "./search";
 
 const AppNavbar = () => {
   const { accountData, setIsAuthenticated } = useAuth();
@@ -25,7 +26,12 @@ const AppNavbar = () => {
         <span className="ml-3 rounded-full border border-neutral-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-neutral-400">
           Client
         </span>
+
       </div>
+
+<div className="flex items-center">
+  <Search/>
+</div>
 
       <div className="flex items-center gap-4">
         <Link
