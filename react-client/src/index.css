@@ -15,3 +15,14 @@ body {
   margin: 0;
   font-family: var(--font-sans);
 }
+
+@keyframes cf-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(160px) rotate(260deg);
+    opacity: 0;
+  }
+}

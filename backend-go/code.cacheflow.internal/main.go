@@ -8,6 +8,8 @@ import (
 	accountRoutes "code.cacheflow.internal/account/routes"
 	"code.cacheflow.internal/datafeed"
 	datastores "code.cacheflow.internal/datastores/mongo"
+	portfolioRoutes "code.cacheflow.internal/portfolio/management/routes"
+	orderRoutes "code.cacheflow.internal/portfolio/order/routes"
 	"code.cacheflow.internal/test"
 	"code.cacheflow.internal/util"
 	"code.cacheflow.internal/util/httpx"
@@ -90,11 +92,30 @@ func main() {
 	// Stock data from Massive API (ticker overview + aggregates)
 	r.Get("/v1/datafeed/stock", datafeed.GetTickerOverview)
 	r.Get("/v1/datafeed/stock/aggregates", datafeed.GetTickerAggregatesWithTimeframe)
+	r.Get("/v1/datafeed/stock/aggregates-range", datafeed.GetTickerAggregates)
+	r.Get("/v1/datafeed/snapshots", datafeed.GetTickerSnapshots)
 
 	// Company data from MongoDB database
 	r.Get("/v1/companies/search", datafeed.SearchCompanies)
 	
 	test.GetCompanySnapshot("GOOGL")
+
+	// Portfolio management
+	r.Post("/v1/portfolio", portfolioRoutes.CreatePortfolio)
+	r.Delete("/v1/portfolio", portfolioRoutes.DeletePortfolio)
+	r.Get("/v1/portfolios", portfolioRoutes.GetPortfolios)
+	r.Put("/v1/portfolio", portfolioRoutes.UpdatePortfolio)
+	r.Get("/v1/portfolio/buying-power", portfolioRoutes.GetBuyingPower)
+	r.Post("/v1/portfolio/watchlist", portfolioRoutes.CreateWatchlist)
+	r.Get("/v1/portfolio/watchlists", portfolioRoutes.GetWatchlists)
+	r.Put("/v1/portfolio/watchlist", portfolioRoutes.UpdateWatchlist)
+	r.Delete("/v1/portfolio/watchlist", portfolioRoutes.DeleteWatchlist)
+	r.Put("/v1/portfolio/watchlists/reorder", portfolioRoutes.ReorderWatchlists)
+
+	// Orders
+	r.Post("/v1/order", orderRoutes.ExecuteOrder)
+	r.Get("/v1/orders", orderRoutes.GetOrders)
+	r.Get("/v1/portfolio/positions", orderRoutes.GetPositions)
 
 	logger.Info("Server started at http://localhost:8080")
 	if err := http.ListenAndServe(":8080", r); err != nil {
