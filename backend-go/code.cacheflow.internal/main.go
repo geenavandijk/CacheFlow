@@ -34,9 +34,9 @@ func main() {
 	logger.Info("Secrets initialized")
 
 	datastores.ConnectDB(secrets.DatabaseSecretValue)
+	datastores.EnsureIndexes()
 
 	r := chi.NewRouter()
-
 
 	// ✅ Centralized error handling base
 	r.Use(httpx.WithRequestID)
@@ -97,7 +97,7 @@ func main() {
 
 	// Company data from MongoDB database
 	r.Get("/v1/companies/search", datafeed.SearchCompanies)
-	
+
 	test.GetCompanySnapshot("GOOGL")
 
 	// Portfolio management
