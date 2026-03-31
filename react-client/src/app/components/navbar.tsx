@@ -157,7 +157,7 @@ const AppNavbar = () => {
           </button>
         </div>
 
-        <div className="flex items-center w-96">
+        <div className="flex items-center mx-4">
           <Search />
         </div>
 
