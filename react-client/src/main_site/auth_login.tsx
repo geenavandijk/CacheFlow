@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../provider/auth";
 import api from "../util/api";
+import WordAnimation from "./components/WordAnimation";
+
+
 
 const AuthLogin = () => {
   const [email, setEmail] = useState("");
@@ -54,7 +57,14 @@ const AuthLogin = () => {
   return (
     <div className="flex flex-row items-center justify-center h-full w-full bg-black">
       <div className="hidden md:flex flex-col w-1/2 h-full border-r border-neutral-800 items-center justify-center">
-        <h1 className="text-white text-4xl font-bold">Login Image</h1>
+        {/* <h1 className="text-white text-4xl font-bold">Login Image</h1> */}
+
+        <WordAnimation
+          words={["Invest.", "Grow.", "Retire."]}
+          eyebrow="Welcome back to CacheFlow"
+        />
+
+
       </div>
 
       <div className="flex flex-col w-full md:w-1/2 h-full justify-center px-12">
