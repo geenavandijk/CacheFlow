@@ -4,6 +4,8 @@ import MainSiteNavbar from './components/navbar';
 import AuthLogin from './auth_login';
 import AuthCreate from './auth_create';
 import AuthVerify from './auth_verify';
+import SearchPage from './search';
+import ApiDocsPage from './api_docs';
 
 const MainSiteViewController = () => {
     const currentTab = window.location.pathname.split("/")[1];
@@ -14,6 +16,8 @@ const MainSiteViewController = () => {
             login: 'Log in',
             signup: 'Sign up',
             verify: 'Verify email',
+            search: 'Search',
+            api: 'API Docs',
         };
         const pageName = pageNames[currentTab] ?? 'Home';
         document.title = `CacheFlow | ${pageName}`;
@@ -28,13 +32,24 @@ const MainSiteViewController = () => {
 
         case "login":
             component = <AuthLogin />;
-            break;  
+            break;
+
         case "signup":
             component = <AuthCreate />;
             break;
+
         case "verify":
             component = <AuthVerify />;
             break;
+
+        case "search":
+            component = <SearchPage />;
+            break;
+
+        case "api":
+            component = <ApiDocsPage />;
+            break;
+
         default:
             component = <Home />;
             break;
@@ -42,7 +57,6 @@ const MainSiteViewController = () => {
 
   return (
     <div className="relative flex flex-col w-full h-screen bg-black">
-
         {
             currentTab !== "login" && currentTab !== "signup" && (
                 <div className="fixed top-0 left-0 w-full z-10">
@@ -50,8 +64,7 @@ const MainSiteViewController = () => {
                 </div>
             )
         }
-        
-        
+
         {component}
     </div>
   )

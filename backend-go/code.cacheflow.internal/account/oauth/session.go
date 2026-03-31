@@ -327,8 +327,6 @@ func VerifyOAuthToken(next http.Handler) http.Handler {
 		uid := req.Header.Get("x-cf-uid")
 		uid = strings.ToLower(uid)
 
-		fmt.Println("Looking for email (uid): ", uid)
-
 		cDeviceID := req.Header.Get("x-cf-device-id")
 
 		if uid == "" || cDeviceID == "" {

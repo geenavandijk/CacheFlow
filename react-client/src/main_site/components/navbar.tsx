@@ -18,6 +18,8 @@ const MainSiteNavbar = () => {
 
   const tabs: Tab[] = [
     { name: "Home", path: "/" },
+    { name: "Search", path: "/search" },
+    { name: "API", path: "/api" },
   ];
 
   const currentTab = location.pathname;
@@ -31,28 +33,26 @@ const MainSiteNavbar = () => {
     <div className="z-10">
       <div className=" w-full h-20 flex items-center justify-between px-4">
         <div className="flex items-center lg:w-1/3">
-          <button  onClick={() => navigate("/")} className="hover:cursor-pointer focus:outline-none">
+          <button onClick={() => navigate("/")} className="hover:cursor-pointer focus:outline-none">
             <h1 className="text-2xl font-bold text-orange-500">Cache<span className="text-blue-600">Flow</span></h1>
           </button>
         </div>
 
-        {/* Desktop: center tabs + login */}
         <div className="hidden lg:w-full md:flex flex-row items-center space-x-2">
-
           <div className="flex items-center justify-center mx-auto rounded-full bg-black/20 p-2">
-          {tabs.map((tab) => (
-            <button
-              key={tab.path}
-              onClick={() => navigate(tab.path)}
-              className={`font-medium text-white hover:cursor-pointer px-4 py-2 w-28 rounded-full transition-all duration-300 ${
-                currentTab === tab.path
-                  ? "bg-white/10 border border-white/10"
-                  : "text- hover:bg-primary"
-              }`}
-            >
-              {tab.name}
-            </button>
-          ))}
+            {tabs.map((tab) => (
+              <button
+                key={tab.path}
+                onClick={() => navigate(tab.path)}
+                className={`font-medium text-white hover:cursor-pointer px-4 py-2 w-28 rounded-full transition-all duration-300 ${
+                  currentTab === tab.path
+                    ? "bg-white/10 border border-white/10"
+                    : "text- hover:bg-primary"
+                }`}
+              >
+                {tab.name}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -68,7 +68,6 @@ const MainSiteNavbar = () => {
             </button>
           </div>
 
-          {/* Mobile: menu icon (opacity style) */}
           <button
             aria-label="Open menu"
             onClick={() => setMobileMenuOpen(true)}
@@ -79,7 +78,6 @@ const MainSiteNavbar = () => {
         </div>
       </div>
 
-      {/* Full-screen mobile menu modal */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
@@ -89,7 +87,6 @@ const MainSiteNavbar = () => {
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md md:hidden"
           >
-            {/* Top bar: spacer + X (z-10 so X stays above the full-screen content and is clickable) */}
             <div className="relative z-10 flex items-center justify-between h-20 px-4">
               <div className="w-16" aria-hidden />
               <button
@@ -101,7 +98,6 @@ const MainSiteNavbar = () => {
               </button>
             </div>
 
-            {/* Centered tabs - big writing */}
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}

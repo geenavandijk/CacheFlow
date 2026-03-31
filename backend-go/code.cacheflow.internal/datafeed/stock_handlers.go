@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"code.cacheflow.internal/util"
@@ -12,7 +14,6 @@ import (
 	"code.cacheflow.internal/util/secrets"
 
 	"github.com/charmbracelet/log"
-	"os"
 )
 
 const massiveBaseURL = "https://api.massive.com"
@@ -73,8 +74,16 @@ func timeframeToRange(tf string) (multiplier, timespan, from, to string, ok bool
 	today := now.Format("2006-01-02")
 	switch tf {
 	case "1d":
-		// 5-minute candles, close price
-		return "5", "minute", today, today, true
+		// 5-minute candles for the most recent trading day (Friday if weekend)
+		tradeDay := now
+		switch tradeDay.Weekday() {
+		case time.Saturday:
+			tradeDay = tradeDay.AddDate(0, 0, -1)
+		case time.Sunday:
+			tradeDay = tradeDay.AddDate(0, 0, -2)
+		}
+		day := tradeDay.Format("2006-01-02")
+		return "5", "minute", day, day, true
 	case "1w":
 		// 1-hour candles
 		start := now.AddDate(0, 0, -7).Format("2006-01-02")
@@ -178,4 +187,139 @@ func proxyAggregates(res http.ResponseWriter, req *http.Request, logger *log.Log
 	}
 
 	util.JSONResponse(res, http.StatusOK, result)
+}
+
+// GetTickerSnapshots returns latest price and intraday change for one or more tickers.
+// Query params:
+// - ticker: single ticker, OR
+// - tickers: comma-separated list of tickers
+func GetTickerSnapshots(res http.ResponseWriter, req *http.Request) {
+	logger := log.NewWithOptions(os.Stderr, log.Options{
+		Prefix: "DATAFEED (SN)",
+	})
+
+	// Support either ?ticker= or ?tickers=aapl,msft
+	q := req.URL.Query()
+	single := strings.TrimSpace(q.Get("ticker"))
+	multi := strings.TrimSpace(q.Get("tickers"))
+
+	var tickers []string
+	if multi != "" {
+		for _, t := range strings.Split(multi, ",") {
+			tt := strings.ToUpper(strings.TrimSpace(t))
+			if tt != "" {
+				tickers = append(tickers, tt)
+			}
+		}
+	} else if single != "" {
+		tickers = []string{strings.ToUpper(single)}
+	}
+
+	if len(tickers) == 0 {
+		httpx.WriteError(res, req, httpx.BadRequest("ticker or tickers is required", map[string]string{
+			"ticker":  "missing",
+			"tickers": "missing",
+		}))
+		return
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	type Snapshot struct {
+		Ticker         string   `json:"ticker"`
+		LastPrice      float64  `json:"last_price"`
+		PrevClose      *float64 `json:"prev_close,omitempty"`
+		Change         *float64 `json:"change,omitempty"`
+		ChangePercent  *float64 `json:"change_percent,omitempty"`
+		Raw            any      `json:"raw,omitempty"`
+	}
+
+	var snapshots []Snapshot
+
+	for _, t := range tickers {
+		url := fmt.Sprintf("%s/v2/snapshot/locale/us/markets/stocks/tickers/%s?apiKey=%s",
+			massiveBaseURL, t, secrets.MassiveMainApiKeyValue)
+
+		httpReq, err := http.NewRequestWithContext(req.Context(), http.MethodGet, url, nil)
+		if err != nil {
+			logger.Error("failed to create snapshot request", "ticker", t, "err", err)
+			continue
+		}
+
+		resp, err := client.Do(httpReq)
+		if err != nil {
+			logger.Error("snapshot request failed", "ticker", t, "err", err)
+			continue
+		}
+
+		body, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			logger.Error("failed to read snapshot response", "ticker", t, "err", err)
+			continue
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			logger.Error("snapshot api error", "ticker", t, "status", resp.StatusCode, "body", string(body))
+			continue
+		}
+
+		var parsed struct {
+			Status string                 `json:"status"`
+			Ticker map[string]any         `json:"ticker"`
+		}
+		if err := json.Unmarshal(body, &parsed); err != nil {
+			logger.Error("failed to parse snapshot response", "ticker", t, "err", err)
+			continue
+		}
+
+		var lastPrice float64
+		var prevClosePtr *float64
+		var changePtr *float64
+		var changePctPtr *float64
+
+		if lastTradeRaw, ok := parsed.Ticker["lastTrade"]; ok {
+			if m, ok := lastTradeRaw.(map[string]any); ok {
+				if p, ok := m["p"].(float64); ok {
+					lastPrice = p
+				}
+			}
+		}
+		if lastPrice == 0 {
+			if dayRaw, ok := parsed.Ticker["day"]; ok {
+				if m, ok := dayRaw.(map[string]any); ok {
+					if c, ok := m["c"].(float64); ok {
+						lastPrice = c
+					}
+				}
+			}
+		}
+
+		if prevDayRaw, ok := parsed.Ticker["prevDay"]; ok {
+			if m, ok := prevDayRaw.(map[string]any); ok {
+				if c, ok := m["c"].(float64); ok {
+					prevClose := c
+					prevClosePtr = &prevClose
+					if lastPrice != 0 {
+						ch := lastPrice - c
+						cp := (ch / c) * 100
+						changePtr = &ch
+						changePctPtr = &cp
+					}
+				}
+			}
+		}
+
+		snapshots = append(snapshots, Snapshot{
+			Ticker:        t,
+			LastPrice:     lastPrice,
+			PrevClose:     prevClosePtr,
+			Change:        changePtr,
+			ChangePercent: changePctPtr,
+		})
+	}
+
+	util.JSONResponse(res, http.StatusOK, map[string]any{
+		"snapshots": snapshots,
+	})
 }

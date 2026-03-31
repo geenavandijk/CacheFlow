@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../provider/auth";
 import api from "../util/api";
 import type { RiskSettings } from "../util/account_data";
-import { Slider } from "./components/slider";
+// import { Slider } from "./components/slider";
 
 const inputClass =
   "w-full h-10 text-white mt-2 rounded-lg border border-neutral-800 focus:border-white focus:border-2 transition-all duration-300 p-2 bg-transparent active:ring-0 focus:ring-0 focus:outline-none";
@@ -67,7 +67,7 @@ export const Settings = () => {
     );
   }
 
-  const riskLabel = riskTolerance === 1 ? "Lowest" : riskTolerance === 10 ? "Highest" : "Medium";
+  // const riskLabel = riskTolerance === 1 ? "Lowest" : riskTolerance === 10 ? "Highest" : "Medium";
 
   return (
     <div className="flex flex-col w-full h-full bg-black text-white px-8 py-8">
@@ -103,7 +103,7 @@ export const Settings = () => {
           </div>
         </div>
 
-        <div className="space-y-4 p-4 border border-neutral-800 rounded-lg bg-neutral-900/50">
+        {/* <div className="space-y-4 p-4 border border-neutral-800 rounded-lg bg-neutral-900/50">
           <h2 className="text-xs font-medium uppercase tracking-[0.16em] text-neutral-500">
             Risk settings
           </h2>
@@ -143,7 +143,7 @@ export const Settings = () => {
               />
             </div>
           </div>
-        </div>
+        </div> */}
 
         {message && (
           <p className={message.type === "success" ? "text-green-400 text-sm" : "text-red-400 text-sm"}>
