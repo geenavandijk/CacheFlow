@@ -169,6 +169,12 @@ const AppNavbar = () => {
             Dashboard
           </Link>
           <Link
+            to="/client-app/strategies"
+            className="text-xs text-neutral-300 hover:text-white transition-colors"
+          >
+            Strategies
+          </Link>
+          <Link
             to="/client-app/settings"
             className="text-xs text-neutral-300 hover:text-white transition-colors"
           >

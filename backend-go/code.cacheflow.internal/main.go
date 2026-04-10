@@ -10,6 +10,7 @@ import (
 	datastores "code.cacheflow.internal/datastores/mongo"
 	portfolioRoutes "code.cacheflow.internal/portfolio/management/routes"
 	orderRoutes "code.cacheflow.internal/portfolio/order/routes"
+	strategyRoutes "code.cacheflow.internal/strategy/routes"
 	"code.cacheflow.internal/test"
 	"code.cacheflow.internal/util"
 	"code.cacheflow.internal/util/httpx"
@@ -116,6 +117,21 @@ func main() {
 	r.Post("/v1/order", orderRoutes.ExecuteOrder)
 	r.Get("/v1/orders", orderRoutes.GetOrders)
 	r.Get("/v1/portfolio/positions", orderRoutes.GetPositions)
+
+	// Indicator proxies (for frontend charts)
+	r.Get("/v1/datafeed/indicators/rsi", datafeed.GetRSI)
+	r.Get("/v1/datafeed/indicators/ema", datafeed.GetEMA)
+	r.Get("/v1/datafeed/indicators/sma", datafeed.GetSMA)
+	r.Get("/v1/datafeed/indicators/macd", datafeed.GetMACD)
+
+	// Strategies + Backtests + Monte Carlo
+	r.Post("/v1/strategy", strategyRoutes.CreateStrategy)
+	r.Get("/v1/strategies", strategyRoutes.GetStrategies)
+	r.Put("/v1/strategy", strategyRoutes.UpdateStrategy)
+	r.Delete("/v1/strategy", strategyRoutes.DeleteStrategy)
+	r.Post("/v1/strategy/backtest", strategyRoutes.RunBacktest)
+	r.Get("/v1/strategy/backtests", strategyRoutes.GetBacktests)
+	r.Post("/v1/strategy/montecarlo", strategyRoutes.RunMonteCarlo)
 
 	logger.Info("Server started at http://localhost:8080")
 	if err := http.ListenAndServe(":8080", r); err != nil {

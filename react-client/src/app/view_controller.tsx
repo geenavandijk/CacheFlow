@@ -3,6 +3,7 @@ import { Dashboard } from "./dashboard";
 import { Profile } from "./profile";
 import { Settings } from "./settings";
 import { Stock } from "./stock";
+import { Strategies } from "./strategies";
 import { useEffect } from "react";
 import { PortfolioProvider } from "./portfolio_context";
 import { PositionsProvider } from "./positions_context";
@@ -17,6 +18,7 @@ const AppViewController = () => {
       profile: "Profile",
       settings: "Settings",
       stock: "Stock",
+      strategies: "Strategies",
     };
     const pageName = pageNames[currentTab] ?? "Dashboard";
     document.title = `CacheFlow | ${pageName}`;
@@ -36,6 +38,9 @@ const AppViewController = () => {
       break;
     case "stock":
       component = <Stock />;
+      break;
+    case "strategies":
+      component = <Strategies />;
       break;
     default:
       component = <Dashboard />;
