@@ -12,7 +12,34 @@ import {
   Area,
   ResponsiveContainer,
   YAxis,
+  XAxis,
+  Tooltip,
 } from "recharts";
+import { usePortfolioChart, type ChartPoint } from "./use_portfolio_chart";
+
+function PortfolioTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: { payload: ChartPoint }[];
+}) {
+  if (!active || !payload?.length) return null;
+  const point = payload[0].payload;
+  return (
+    <div className="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-xs shadow-xl">
+      <p className="text-neutral-400 mb-0.5">
+        {new Date(point.t).toLocaleString([], {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })}
+      </p>
+      <p className="text-white font-semibold">${point.value.toFixed(2)}</p>
+    </div>
+  );
+}
 
 const TIMEFRAMES: Array<"1d" | "1w" | "1m" | "3m" | "1y" | "all"> = [
   "1d",
@@ -44,8 +71,9 @@ export const Dashboard = () => {
   const [createError, setCreateError] = useState<string | null>(null);
   const [savingCreate, setSavingCreate] = useState(false);
 
-  const [timeframe, setTimeframe] =
-    useState<"1d" | "1w" | "1m" | "3m" | "1y" | "all">("1m");
+  const [timeframe, setTimeframe] = useState<
+    "1d" | "1w" | "1m" | "3m" | "1y" | "all"
+  >("1m");
   const [buyingPower, setBuyingPower] = useState<number | null>(null);
   const [buyingPowerLoading, setBuyingPowerLoading] = useState(false);
 
@@ -63,13 +91,19 @@ export const Dashboard = () => {
   const [isReorderOpen, setIsReorderOpen] = useState(false);
   const [reorderItems, setReorderItems] = useState<string[]>([]);
 
-  const [activeWatchlistForAdd, setActiveWatchlistForAdd] = useState<string | null>(null);
+  const [activeWatchlistForAdd, setActiveWatchlistForAdd] = useState<
+    string | null
+  >(null);
   const [addSearchQuery, setAddSearchQuery] = useState("");
-  const [addSearchResults, setAddSearchResults] = useState<{ name: string; ticker: string }[]>([]);
+  const [addSearchResults, setAddSearchResults] = useState<
+    { name: string; ticker: string }[]
+  >([]);
   const [addSearchLoading, setAddSearchLoading] = useState(false);
   const [addSearchError, setAddSearchError] = useState<string | null>(null);
 
-  const [activeWatchlistForManage, setActiveWatchlistForManage] = useState<string | null>(null);
+  const [activeWatchlistForManage, setActiveWatchlistForManage] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     const loadBuyingPower = async () => {
@@ -241,6 +275,49 @@ export const Dashboard = () => {
   );
   const marketData = useWatchlistMarketData(allWatchlistTickers);
 
+  const {
+    data: chartData,
+    loading: chartLoading,
+    error: chartError,
+  } = usePortfolioChart(selectedPortfolio, timeframe);
+
+  const chartFirst = chartData.length > 0 ? chartData[0].value : null;
+  const chartLast =
+    chartData.length > 0 ? chartData[chartData.length - 1].value : null;
+  const chartChange =
+    chartFirst != null && chartLast != null ? chartLast - chartFirst : null;
+  const chartChangePct =
+    chartFirst != null && chartFirst !== 0 && chartChange != null
+      ? (chartChange / chartFirst) * 100
+      : null;
+  const chartIsPositive = chartChange == null ? true : chartChange >= 0;
+  const chartColor = chartIsPositive ? "#4ade80" : "#f87171";
+
+  function formatXTick(t: number): string {
+    const d = new Date(t);
+    if (timeframe === "1d") {
+      return d.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
+    }
+    if (timeframe === "all") {
+      return d.getFullYear().toString();
+    }
+    return d.toLocaleDateString([], { month: "short", day: "numeric" });
+  }
+
+  function xTickInterval(): number | "preserveStartEnd" {
+    if (chartData.length <= 6) return 0;
+    if (timeframe === "1d") return Math.floor(chartData.length / 6);
+    if (timeframe === "1w") return Math.floor(chartData.length / 7);
+    if (timeframe === "1m") return Math.floor(chartData.length / 8);
+    if (timeframe === "3m") return Math.floor(chartData.length / 6);
+    if (timeframe === "1y") return Math.floor(chartData.length / 12);
+    return Math.floor(chartData.length / 8);
+  }
+
   return (
     <div className="flex flex-col max-w-6xl w-full mx-auto h-full bg-black text-white overflow-y-auto">
       <div className="flex-1 flex flex-col px-8 py-8 gap-6">
@@ -275,32 +352,120 @@ export const Dashboard = () => {
         {selectedPortfolio && (
           <>
             <div className="rounded-xl border border-neutral-800 bg-neutral-900/30 px-6 py-5">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold text-white">
-                  {selectedPortfolio.name}
-                </h2>
-                <span className="text-xs text-neutral-500">
-                  Portfolio overview (chart placeholder)
-                </span>
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h2 className="text-sm font-semibold text-white">
+                    {selectedPortfolio.name}
+                  </h2>
+                  {chartLast != null && (
+                    <p className="text-2xl font-semibold text-white mt-1">
+                      ${chartLast.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  )}
+                  {chartChange != null && (
+                    <p
+                      className={`text-xs mt-0.5 ${chartIsPositive ? "text-green-400" : "text-red-400"}`}
+                    >
+                      {chartIsPositive ? "+" : ""}
+                      {chartChange.toFixed(2)}
+                      {chartChangePct != null &&
+                        ` (${chartIsPositive ? "+" : ""}${chartChangePct.toFixed(2)}%)`}
+                      {" "}this period
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2 justify-end">
+                  {TIMEFRAMES.map((tf) => (
+                    <button
+                      key={tf}
+                      type="button"
+                      onClick={() => setTimeframe(tf)}
+                      className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                        timeframe === tf
+                          ? "bg-orange-500 text-black"
+                          : "border border-neutral-700 text-neutral-300 hover:border-neutral-500 hover:text-white"
+                      }`}
+                    >
+                      {tf.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="h-52 rounded-lg bg-gradient-to-b from-neutral-800 to-neutral-950 border border-neutral-800 flex items-center justify-center text-neutral-600 text-xs">
-                Price / equity chart coming soon
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {TIMEFRAMES.map((tf) => (
-                  <button
-                    key={tf}
-                    type="button"
-                    onClick={() => setTimeframe(tf)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                      timeframe === tf
-                        ? "bg-orange-500 text-black"
-                        : "border border-neutral-700 text-neutral-300 hover:border-neutral-500 hover:text-white"
-                    }`}
-                  >
-                    {tf.toUpperCase()}
-                  </button>
-                ))}
+
+              <div className="h-52 w-full">
+                {chartLoading ? (
+                  <div className="h-full rounded-lg bg-neutral-900/40 border border-neutral-800 flex items-center justify-center text-neutral-500 text-xs">
+                    Loading chart…
+                  </div>
+                ) : chartError ? (
+                  <div className="h-full rounded-lg bg-neutral-900/40 border border-neutral-800 flex items-center justify-center text-red-400 text-xs">
+                    {chartError}
+                  </div>
+                ) : chartData.length === 0 ? (
+                  <div className="h-full rounded-lg bg-neutral-900/40 border border-neutral-800 flex items-center justify-center text-neutral-600 text-xs">
+                    No data for this timeframe — place some orders to see your portfolio performance.
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart
+                      data={chartData}
+                      margin={{ top: 4, right: 0, left: 0, bottom: 0 }}
+                    >
+                      <defs>
+                        <linearGradient
+                          id="portfolio-fill"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="5%"
+                            stopColor={chartColor}
+                            stopOpacity={0.18}
+                          />
+                          <stop
+                            offset="95%"
+                            stopColor={chartColor}
+                            stopOpacity={0}
+                          />
+                        </linearGradient>
+                      </defs>
+                      <XAxis
+                        dataKey="t"
+                        tickFormatter={formatXTick}
+                        interval={xTickInterval()}
+                        tick={{ fill: "#737373", fontSize: 10 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        hide
+                        domain={[
+                          (min: number) => min * 0.98,
+                          (max: number) => max * 1.02,
+                        ]}
+                      />
+                      <Tooltip
+                        content={<PortfolioTooltip />}
+                        cursor={{
+                          stroke: "#525252",
+                          strokeWidth: 1,
+                          strokeDasharray: "4 4",
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="value"
+                        stroke={chartColor}
+                        strokeWidth={2}
+                        fill="url(#portfolio-fill)"
+                        dot={false}
+                        activeDot={{ r: 4, fill: chartColor, strokeWidth: 0 }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             </div>
 
@@ -329,8 +494,8 @@ export const Dashboard = () => {
                     {buyingPowerLoading
                       ? "—"
                       : buyingPower != null
-                      ? `$${buyingPower.toFixed(2)}`
-                      : "—"}
+                        ? `$${buyingPower.toFixed(2)}`
+                        : "—"}
                   </span>
                 </div>
               </div>
@@ -359,8 +524,7 @@ export const Dashboard = () => {
                     const companyName = nameByTicker[ticker] ?? ticker;
                     const unreal = p.unrealized ?? 0;
                     const absUnreal = Math.abs(unreal).toFixed(2);
-                    const prefix =
-                      unreal > 0 ? "+" : unreal < 0 ? "-" : "";
+                    const prefix = unreal > 0 ? "+" : unreal < 0 ? "-" : "";
                     const unrealStr =
                       prefix === ""
                         ? `$${absUnreal}`
@@ -370,8 +534,8 @@ export const Dashboard = () => {
                       unreal > 0
                         ? "text-green-400"
                         : unreal < 0
-                        ? "text-red-400"
-                        : "text-neutral-300";
+                          ? "text-red-400"
+                          : "text-neutral-300";
 
                     return (
                       <button
@@ -405,9 +569,7 @@ export const Dashboard = () => {
                             <span className="text-[11px]">
                               ${worth.toFixed(2)} total
                             </span>
-                            <span className="text-neutral-500 text-sm">
-                              ›
-                            </span>
+                            <span className="text-neutral-500 text-sm">›</span>
                           </div>
                         </div>
                       </button>
@@ -449,7 +611,9 @@ export const Dashboard = () => {
               </div>
               <div className="rounded- py-3">
                 {watchlistsLoading ? (
-                  <p className="text-sm text-neutral-500">Loading watchlists…</p>
+                  <p className="text-sm text-neutral-500">
+                    Loading watchlists…
+                  </p>
                 ) : watchlists.length === 0 ? (
                   <p className="text-sm text-neutral-500">
                     You don&apos;t have any watchlists yet.
@@ -533,8 +697,7 @@ export const Dashboard = () => {
                                   ? series[series.length - 1].c
                                   : null);
                               const change = snapshot?.change ?? null;
-                              const changePct =
-                                snapshot?.changePercent ?? null;
+                              const changePct = snapshot?.changePercent ?? null;
                               const changePrefix =
                                 change != null && change !== 0
                                   ? change > 0
@@ -549,8 +712,8 @@ export const Dashboard = () => {
                                 changeAbs == null
                                   ? "—"
                                   : changePrefix === ""
-                                  ? `$${changeAbs}`
-                                  : `${changePrefix}$${changeAbs}`;
+                                    ? `$${changeAbs}`
+                                    : `${changePrefix}$${changeAbs}`;
                               const changePctText =
                                 changePct != null
                                   ? `${changePct > 0 ? "+" : ""}${changePct.toFixed(
@@ -564,8 +727,7 @@ export const Dashboard = () => {
                                     : "text-red-400"
                                   : "text-neutral-300";
 
-                              const name =
-                                nameByTicker[ticker] ?? ticker;
+                              const name = nameByTicker[ticker] ?? ticker;
 
                               return (
                                 <button
@@ -594,20 +756,22 @@ export const Dashboard = () => {
                                         width={200}
                                         height="100%"
                                       >
-<AreaChart data={series}>
-  <defs>{/* … existing gradient … */}</defs>
-  <YAxis
-    hide
-    domain={['dataMin', 'dataMax']} // or a padded version
-  />
-  <Area
-    type="monotone"
-    dataKey="c"
-    stroke="rgb(249 115 22)"
-    strokeWidth={1.5}
-    fill={`url(#wl-${ticker}-fill)`}
-  />
-</AreaChart>
+                                        <AreaChart data={series}>
+                                          <defs>
+                                            {/* … existing gradient … */}
+                                          </defs>
+                                          <YAxis
+                                            hide
+                                            domain={["dataMin", "dataMax"]} // or a padded version
+                                          />
+                                          <Area
+                                            type="monotone"
+                                            dataKey="c"
+                                            stroke="rgb(249 115 22)"
+                                            strokeWidth={1.5}
+                                            fill={`url(#wl-${ticker}-fill)`}
+                                          />
+                                        </AreaChart>
                                       </ResponsiveContainer>
                                     ) : (
                                       <div className="w-full h-full flex items-center justify-center text-[10px] text-neutral-600">
@@ -625,8 +789,7 @@ export const Dashboard = () => {
                                       className={`text-[11px] ${changeClass}`}
                                     >
                                       {changeText}
-                                      {changePctText &&
-                                        ` (${changePctText})`}
+                                      {changePctText && ` (${changePctText})`}
                                     </span>
                                   </div>
                                 </button>
@@ -662,8 +825,8 @@ export const Dashboard = () => {
                         typeof o.realized === "number"
                           ? o.realized
                           : typeof o.Realized === "number"
-                          ? o.Realized
-                          : null;
+                            ? o.Realized
+                            : null;
                       const ts =
                         o.timestamp ??
                         o.Timestamp ??
@@ -686,15 +849,13 @@ export const Dashboard = () => {
                             : "-"
                           : "";
                       const realizedAbs =
-                        realized != null
-                          ? Math.abs(realized).toFixed(2)
-                          : null;
+                        realized != null ? Math.abs(realized).toFixed(2) : null;
                       const realizedText =
                         realizedAbs == null
                           ? "—"
                           : realizedPrefix === ""
-                          ? `$${realizedAbs}`
-                          : `${realizedPrefix}$${realizedAbs}`;
+                            ? `$${realizedAbs}`
+                            : `${realizedPrefix}$${realizedAbs}`;
                       const realizedClass =
                         realized != null && realized !== 0
                           ? realized > 0
@@ -730,7 +891,9 @@ export const Dashboard = () => {
                             </span>
                           </div>
                           <div className="flex flex-col items-end">
-                            <span className={realizedClass}>{realizedText}</span>
+                            <span className={realizedClass}>
+                              {realizedText}
+                            </span>
                           </div>
                         </div>
                       );
@@ -787,9 +950,7 @@ export const Dashboard = () => {
 
             <form onSubmit={handleSubmitCreate} className="space-y-3">
               <div>
-                <label className="text-white text-sm font-regular">
-                  Name
-                </label>
+                <label className="text-white text-sm font-regular">Name</label>
                 <input
                   type="text"
                   value={name}
@@ -823,9 +984,7 @@ export const Dashboard = () => {
               </div>
 
               {createError && (
-                <p className="text-xs text-red-400 mt-1">
-                  {createError}
-                </p>
+                <p className="text-xs text-red-400 mt-1">{createError}</p>
               )}
 
               <div className="flex justify-end gap-2 pt-2">
@@ -887,9 +1046,7 @@ export const Dashboard = () => {
               className="space-y-3"
             >
               <div>
-                <label className="text-white text-sm font-regular">
-                  Name
-                </label>
+                <label className="text-white text-sm font-regular">Name</label>
                 <input
                   type="text"
                   value={watchlistName}
@@ -972,7 +1129,8 @@ export const Dashboard = () => {
                           setReorderItems((prev) => {
                             const arr = [...prev];
                             const idx = arr.indexOf(id);
-                            if (idx === -1 || idx >= arr.length - 1) return prev;
+                            if (idx === -1 || idx >= arr.length - 1)
+                              return prev;
                             const tmp = arr[idx + 1];
                             arr[idx + 1] = arr[idx];
                             arr[idx] = tmp;
@@ -1157,4 +1315,3 @@ export const Dashboard = () => {
     </div>
   );
 };
-
