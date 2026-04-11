@@ -6,7 +6,7 @@ export const Profile = () => {
   if (!accountData) {
     return (
       <div className="flex items-center justify-center w-full h-full bg-black text-white">
-        <p>[We need to have account data working or else this will show]
+        <p>You do not have a profile created yet.
         </p>
       </div>
     );
