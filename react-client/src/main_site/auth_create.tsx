@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { MailCheck } from "lucide-react";
 import { getApiBaseUrl } from "../util/api";
+import WordAnimation from "./components/WordAnimation";
 
 const AuthCreate = () => {
     const [firstName, setFirstName] = useState("");
@@ -50,7 +51,11 @@ const AuthCreate = () => {
     return (
         <div className="flex flex-row items-center justify-center h-full w-full bg-black">
           <div className="hidden md:flex flex-col w-1/2 h-full border-r border-neutral-800 items-center justify-center">
-            <h1 className="text-white text-4xl font-bold">Create Image</h1>
+            {/* <h1 className="text-white text-4xl font-bold">Create Image</h1> */}
+            <WordAnimation
+              words={["Invest.", "Grow.", "Retire."]}
+              eyebrow="Welcome  to CacheFlow"
+            />
           </div>
     
           <div className="flex flex-col w-full md:w-1/2 h-full justify-center px-12">
@@ -170,7 +175,11 @@ const AuthCreate = () => {
   return (
     <div className="flex flex-row items-center justify-center h-full w-full bg-black">
       <div className="hidden md:flex flex-col w-1/2 h-full border-r border-neutral-800 items-center justify-center">
-        <h1 className="text-white text-4xl font-bold">Create Image</h1>
+       {/* <h1 className="text-white text-4xl font-bold">Create Image</h1> */}
+        <WordAnimation
+          words={["Invest.", "Grow.", "Retire."]}
+          eyebrow="Welcome to CacheFlow"
+        />
       </div>
 
       <div className="flex flex-col w-full md:w-1/2 h-full justify-center px-12">
