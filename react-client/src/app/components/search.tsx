@@ -85,7 +85,7 @@ export default function Search() {
 
     return (
         <>
-            <div className="relative w-96">
+            <div>
                 <input
                     className="border-b border-neutral-400 w-96 bg-transparent px-1 py-0.5 text-[10px] uppercase tracking-[0.18em] text-neutral-400 outline-none placeholder:text-neutral-400"
                     type="text"
